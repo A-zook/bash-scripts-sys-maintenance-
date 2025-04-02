@@ -1,42 +1,61 @@
 #!/bin/bash
 
-# Script Name: system_maintenance.sh
-# Description: Automates log analysis, system optimization, error fixing, and security hardening
+# Define log file location
+LOG_FILE="/var/log/system_monitor.log"
 
-echo "===== SYSTEM MAINTENANCE STARTED - $(date) ====="
-
-# Objective 1: Log Analysis
-echo "[TASK 1: LOG ANALYSIS]"
-grep -i 'error\|fail\|warning' /var/log/syslog > /var/log/error_report.log
-echo "Log analysis complete. Check /var/log/error_report.log for details."
-
-# Objective 2: Optimize Performance
-echo "[TASK 2: PERFORMANCE OPTIMIZATION]"
-apt update && apt upgrade -y    # Update and upgrade packages
-apt autoremove -y               # Remove unused packages
-apt clean                       # Clean up APT cache
-systemctl restart networking    # Restart networking services
-echo "Performance optimization complete."
-
-# Objective 3: Fix Common Errors (WSL Example)
-echo "[TASK 3: FIXING COMMON ERRORS]"
-if grep -q "WSL" /var/log/syslog; then
-    wsl --shutdown
-    echo "WSL restarted."
-else
-    echo "No WSL errors found."
+# Ensure log file exists
+if [ ! -f "$LOG_FILE" ]; then
+    touch "$LOG_FILE"
 fi
 
-# Objective 4: Security Hardening and Compliance
-echo "[TASK 4: SECURITY HARDENING]"
-chmod 600 /etc/shadow
-chmod 644 /etc/passwd
-sed -i 's/^PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-ufw enable
-ufw allow OpenSSH
-apt install -y unattended-upgrades
-dpkg-reconfigure -plow unattended-upgrades
-systemctl restart ssh
-echo "Security hardening complete."
+# Get Current Timestamp
+timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 
-echo "===== SYSTEM MAINTENANCE COMPLETE ====="
+# Get CPU Usage
+cpu_usage=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
+
+# Get Memory Usage
+mem_total=$(free -m | awk '/Mem:/ {print $2}')
+mem_used=$(free -m | awk '/Mem:/ {print $3}')
+mem_usage=$(awk "BEGIN {printf \"%.2f\", ($mem_used/$mem_total)*100}")
+
+# Get Disk Usage
+disk_usage=$(df -h | grep '^/dev' | awk '{print $1, $5}')
+
+# Write to log file
+echo "[$timestamp] CPU Usage: ${cpu_usage}% | Memory Usage: ${mem_usage}% | Disk Usage: $disk_usage" >> "$LOG_FILE"
+
+# Display output in the terminal
+echo -e "\n==== System Monitoring Report ===="
+echo "Timestamp: $timestamp"
+echo "CPU Usage: $cpu_usage%"
+echo "Memory Usage: $mem_usage%"
+echo "Disk Usage:"
+echo "$disk_usage"
+echo "=================================="
+
+#Make the script executable
+chmod +x monitor_system.sh
+
+#If the file is missing, create it using a text editor like nano or vim:
+#Open the file using nano
+nano monitor_system.sh
+
+#Make it executable:
+chmod +x monitor_system.sh
+
+
+#Run it manually
+./monitor_system.sh
+
+
+#Set Up a Cron Job for Automation
+crontab -e
+
+
+#Schedule the script to run every 5 minutes:
+*/5 * * * * /path/to/monitor_system.sh
+
+#========================
+#END OF SCRIPT
+#=======================
